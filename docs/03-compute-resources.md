@@ -1,8 +1,8 @@
 # Provisioning Compute Resources
 
-Kubernetes requires a set of machines to host the Kubernetes control plane and the worker nodes where containers are ultimately run. In this lab you will provision the compute resources required for running a secure and highly available Kubernetes cluster across a single [compute zone](https://cloud.google.com/compute/docs/regions-zones/regions-zones).
+Kubernetes requires a set of machines to host the Kubernetes control plane and the worker nodes where containers are ultimately run. In this lab you will provision the compute resources required for running a secure and highly available Kubernetes cluster across a single [compute zone](https://community.exoscale.com/documentation/platform/exoscale-datacenter-zones).
 
-> Ensure a default compute zone and region have been set as described in the [Prerequisites](01-prerequisites.md#set-a-default-compute-region-and-zone) lab.
+> Ensure a default compute zone have been set as described in the [Prerequisites](01-prerequisites.md#configure-the-exoscale-cli) lab.
 
 ## Networking
 
@@ -10,27 +10,20 @@ The Kubernetes [networking model](https://kubernetes.io/docs/concepts/cluster-ad
 
 > Setting up network policies is out of scope for this tutorial.
 
-### Virtual Private Cloud Network
+### Private Networks
 
-In this section a dedicated [Virtual Private Cloud](https://cloud.google.com/compute/docs/networks-and-firewalls#networks) (VPC) network will be setup to host the Kubernetes cluster.
+In this section a dedicated [Private Network](https://community.exoscale.com/documentation/compute/private-networks/) network will be setup to host the Kubernetes cluster.
 
-Create the `kubernetes-the-hard-way` custom VPC network:
+A [managed private network](https://community.exoscale.com/documentation/compute/private-networks/#managed-private-networks) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
 
-```
-gcloud compute networks create kubernetes-the-hard-way --subnet-mode custom
-```
-
-A [subnet](https://cloud.google.com/compute/docs/vpc/#vpc_networks_and_subnets) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
-
-Create the `kubernetes` subnet in the `kubernetes-the-hard-way` VPC network:
+Create the `kubernetes-the-hard-way` private network:
 
 ```
-gcloud compute networks subnets create kubernetes \
-  --network kubernetes-the-hard-way \
-  --range 10.240.0.0/24
+exo compute private-network create kubernetes-the-hard-way \
+ --start-ip 10.240.0.1 --netmask 255.255.255.0 --end-ip 10.240.0.250
 ```
 
-> The `10.240.0.0/24` IP address range can host up to 254 compute instances.
+> The `10.240.0.0/24` custom IP address range can host up to 250 compute instances.
 
 ### Firewall Rules
 
