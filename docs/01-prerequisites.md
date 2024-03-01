@@ -1,54 +1,36 @@
 # Prerequisites
 
-## Google Cloud Platform
+## Exoscale
 
-This tutorial leverages the [Google Cloud Platform](https://cloud.google.com/) to streamline provisioning of the compute infrastructure required to bootstrap a Kubernetes cluster from the ground up. [Sign up](https://cloud.google.com/free/) for $300 in free credits.
+This tutorial leverages the [Exoscale Platform](https://www.exoscale.com/) to streamline provisioning of the compute infrastructure required to bootstrap a Kubernetes cluster from the ground up. [Contact them](https://www.exoscale.com/contact/) to ask for a trial credit.
 
-[Estimated cost](https://cloud.google.com/products/calculator#id=873932bc-0840-4176-b0fa-a8cfd4ca61ae) to run this tutorial: $0.23 per hour ($5.50 per day).
+[Estimated cost](https://www.exoscale.com/calculator/) to run this tutorial: $0.72 per hour ($17.30 per day).
 
-> The compute resources required for this tutorial exceed the Google Cloud Platform free tier.
+> The compute resources are a bit more expensive on Exoscale compared to other platforms. If you are looking for a cheaper option, consider the original "Kubernetes The Hard Way" [github repository](https://github.com/kelseyhightower/kubernetes-the-hard-way). It uses Google Cloud Platform.
 
-## Google Cloud Platform SDK
+## Exoscale CLI
 
-### Install the Google Cloud SDK
+### Install the Exoscale CLI
 
-Follow the Google Cloud SDK [documentation](https://cloud.google.com/sdk/) to install and configure the `gcloud` command line utility.
+Follow the Exoscale CLI [documentation](https://community.exoscale.com/documentation/tools/exoscale-command-line-interface/) to install and configure the `exo` command line utility.
 
-Verify the Google Cloud SDK version is 338.0.0 or higher:
-
-```
-gcloud version
-```
-
-### Set a Default Compute Region and Zone
-
-This tutorial assumes a default compute region and zone have been configured.
-
-If you are using the `gcloud` command-line tool for the first time `init` is the easiest way to do this:
+Verify the Exoscale CLI version is 1.76.1 or higher:
 
 ```
-gcloud init
+exo version
 ```
 
-Then be sure to authorize gcloud to access the Cloud Platform with your Google user credentials:
+### Configure the Exoscale CLI
+
+This tutorial assumes the exo CLI is configured. If you are using the `exo` command-line tool for the first time, `config` is the way to do this:
 
 ```
-gcloud auth login
+exo config
 ```
 
-Next set a default compute region and compute zone:
+The first access key must be generated through the web portal. [More information here](https://community.exoscale.com/documentation/iam/quick-start/). It will also ask you to setup a default zone. Calling `config` again allows to setup another profile with another default zone.
 
-```
-gcloud config set compute/region us-west1
-```
-
-Set a default compute zone:
-
-```
-gcloud config set compute/zone us-west1-c
-```
-
-> Use the `gcloud compute zones list` command to view additional regions and zones.
+> Use the `exo zone` command to view additional regions and zones.
 
 ## Running Commands in Parallel with tmux
 
