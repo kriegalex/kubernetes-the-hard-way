@@ -11,6 +11,8 @@ Download and install `cfssl` and `cfssljson`:
 
 ### OS X
 
+Use [cloudflare github](https://github.com/cloudflare/cfssl/releases) in case of URL issues.
+
 ```
 curl -o cfssl https://storage.googleapis.com/kubernetes-the-hard-way/cfssl/1.4.1/darwin/cfssl
 curl -o cfssljson https://storage.googleapis.com/kubernetes-the-hard-way/cfssl/1.4.1/darwin/cfssljson
