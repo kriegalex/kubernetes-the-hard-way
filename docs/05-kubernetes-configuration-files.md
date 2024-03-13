@@ -13,9 +13,7 @@ Each kubeconfig requires a Kubernetes API Server to connect to. To support high 
 Retrieve the `kubernetes-the-hard-way` static IP address:
 
 ```
-KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-  --region $(gcloud config get-value compute/region) \
-  --format 'value(address)')
+KUBERNETES_PUBLIC_ADDRESS=$(curl -4s icanhazip.com)
 ```
 
 ### The kubelet Kubernetes Configuration File
@@ -27,7 +25,7 @@ When generating kubeconfig files for Kubelets the client certificate matching th
 Generate a kubeconfig file for each worker node:
 
 ```
-for instance in worker-0 worker-1 worker-2; do
+for instance in kube-worker0 kube-worker1 kube-worker2; do
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.pem \
     --embed-certs=true \
@@ -52,9 +50,9 @@ done
 Results:
 
 ```
-worker-0.kubeconfig
-worker-1.kubeconfig
-worker-2.kubeconfig
+kube-worker0.kubeconfig
+kube-worker1.kubeconfig
+kube-worker2.kubeconfig
 ```
 
 ### The kube-proxy Kubernetes Configuration File
@@ -198,16 +196,22 @@ admin.kubeconfig
 Copy the appropriate `kubelet` and `kube-proxy` kubeconfig files to each worker instance:
 
 ```
-for instance in worker-0 worker-1 worker-2; do
-  gcloud compute scp ${instance}.kubeconfig kube-proxy.kubeconfig ${instance}:~/
+for instance in kube-worker0 kube-worker1 kube-worker2; do
+  internal_ip=$(openstack server show ${instance} -f json | jq -r --arg network_name "kubernetes-private" '.addresses[$network_name][0]')
+  scp -i ../.ssh/id_ecdsa \
+        ${instance}.kubeconfig kube-proxy.kubeconfig \
+        ubuntu@$internal_ip:~/
 done
 ```
 
 Copy the appropriate `kube-controller-manager` and `kube-scheduler` kubeconfig files to each controller instance:
 
 ```
-for instance in controller-0 controller-1 controller-2; do
-  gcloud compute scp admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig ${instance}:~/
+for instance in kube-controller0 kube-controller1 kube-controller2; do
+  internal_ip=$(openstack server show ${instance} -f json | jq -r --arg network_name "kubernetes-private" '.addresses[$network_name][0]')
+  scp -i ../.ssh/id_ecdsa \
+        admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig \
+        ubuntu@$internal_ip:~/
 done
 ```
 

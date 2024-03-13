@@ -4,10 +4,12 @@ In this lab you will bootstrap the Kubernetes control plane across three compute
 
 ## Prerequisites
 
-The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`. Login to each controller instance using the `gcloud` command. Example:
+The commands in this lab must be run on each controller instance: `kube-controller0`, `kube-controller1`, and `kube-controller2`. Login to each controller instance using the `gcloud` command. Example:
 
 ```
-gcloud compute ssh controller-0
+ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.10 # controller0
+ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.11 # controller1
+ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.12 # controller2
 ```
 
 ### Running commands in parallel with tmux
@@ -58,19 +60,11 @@ Install the Kubernetes binaries:
 The instance internal IP address will be used to advertise the API Server to members of the cluster. Retrieve the internal IP address for the current compute instance:
 
 ```
-INTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" \
-  http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip)
+INTERNAL_IP=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
 ```
 
 ```
-REGION=$(curl -s -H "Metadata-Flavor: Google" \
-  http://metadata.google.internal/computeMetadata/v1/project/attributes/google-compute-default-region)
-```
-
-```
-KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-  --region $REGION \
-  --format 'value(address)')
+KUBERNETES_PUBLIC_ADDRESS=$(curl -4s icanhazip.com)
 ```
 
 Create the `kube-apiserver.service` systemd unit file:
@@ -286,7 +280,7 @@ X-Kubernetes-Pf-Prioritylevel-Uid: 8ba5908f-5569-4330-80fd-c643e7512366
 ok
 ```
 
-> Remember to run the above commands on each controller node: `controller-0`, `controller-1`, and `controller-2`.
+> Remember to run the above commands on each controller node: `kube-controller0`, `kube-controller1`, and `kube-controller2`.
 
 ## RBAC for Kubelet Authorization
 
@@ -297,7 +291,7 @@ In this section you will configure RBAC permissions to allow the Kubernetes API 
 The commands in this section will effect the entire cluster and only need to be run once from one of the controller nodes.
 
 ```
-gcloud compute ssh controller-0
+ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.10 # controller0
 ```
 
 Create the `system:kube-apiserver-to-kubelet` [ClusterRole](https://kubernetes.io/docs/admin/authorization/rbac/#role-and-clusterrole) with permissions to access the Kubelet API and perform most common tasks associated with managing pods:
@@ -359,34 +353,55 @@ In this section you will provision an external load balancer to front the Kubern
 
 Create the external load balancer network resources:
 
+#### User OpenRC file
+
 ```
-{
-  KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-    --region $(gcloud config get-value compute/region) \
-    --format 'value(address)')
+source ~/kolla-install/bin/activate
+source /etc/kolla/admin-openrc.sh
+```
 
-  gcloud compute http-health-checks create kubernetes \
-    --description "Kubernetes Health Check" \
-    --host "kubernetes.default.svc.cluster.local" \
-    --request-path "/healthz"
+#### Create Loadbalancer
 
-  gcloud compute firewall-rules create kubernetes-the-hard-way-allow-health-check \
-    --network kubernetes-the-hard-way \
-    --source-ranges 209.85.152.0/22,209.85.204.0/22,35.191.0.0/16 \
-    --allow tcp
+```
+LB_VIP=$(openstack loadbalancer create --name lb1 --vip-subnet-id kubernetes-internal | awk  '/ vip_address / {print $4}')
+```
 
-  gcloud compute target-pools create kubernetes-target-pool \
-    --http-health-check kubernetes
+#### Create floating ip
 
-  gcloud compute target-pools add-instances kubernetes-target-pool \
-   --instances controller-0,controller-1,controller-2
+```
+openstack floating ip create --floating-ip-address 10.0.0.50 kubernetes-public
+```
 
-  gcloud compute forwarding-rules create kubernetes-forwarding-rule \
-    --address ${KUBERNETES_PUBLIC_ADDRESS} \
-    --ports 6443 \
-    --region $(gcloud config get-value compute/region) \
-    --target-pool kubernetes-target-pool
-}
+#### Associate floating ip to lb vip
+
+```
+openstack floating ip set --port $(openstack port list | grep $LB_VIP | cut -d '|' -f 3) 10.0.0.50
+```
+
+#### Create http listener
+
+```
+openstack loadbalancer listener create --name listener1 --protocol HTTP --protocol-port 80 lb1
+```
+
+#### Create pool
+
+```
+openstack loadbalancer pool create --name pool1 --lb-algorithm ROUND_ROBIN --listener listener1 --protocol HTTP
+```
+
+#### Create health monitor
+
+```
+openstack loadbalancer healthmonitor create --delay 5 --max-retries 3 --timeout 5 --type HTTP --url-path / pool1
+```
+
+#### Add Instance become pool member
+
+```
+openstack loadbalancer member create --subnet-id private-subnet --address 10.240.0.10 --protocol-port 80 pool1
+openstack loadbalancer member create --subnet-id private-subnet --address 10.240.0.11 --protocol-port 80 pool1
+openstack loadbalancer member create --subnet-id private-subnet --address 10.240.0.12 --protocol-port 80 pool1
 ```
 
 ### Verification
@@ -396,9 +411,7 @@ Create the external load balancer network resources:
 Retrieve the `kubernetes-the-hard-way` static IP address:
 
 ```
-KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-  --region $(gcloud config get-value compute/region) \
-  --format 'value(address)')
+KUBERNETES_PUBLIC_ADDRESS=$(curl -4s icanhazip.com)
 ```
 
 Make a HTTP request for the Kubernetes version info:

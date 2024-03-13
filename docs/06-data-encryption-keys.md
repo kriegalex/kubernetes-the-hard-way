@@ -35,8 +35,9 @@ EOF
 Copy the `encryption-config.yaml` encryption config file to each controller instance:
 
 ```
-for instance in controller-0 controller-1 controller-2; do
-  gcloud compute scp encryption-config.yaml ${instance}:~/
+for instance in kube-controller0 kube-controller1 kube-controller2; do
+  internal_ip=$(openstack server show ${instance} -f json | jq -r --arg network_name "kubernetes-private" '.addresses[$network_name][0]')
+  scp -i ../.ssh/id_ecdsa encryption-config.yaml ubuntu@$internal_ip:~/
 done
 ```
 

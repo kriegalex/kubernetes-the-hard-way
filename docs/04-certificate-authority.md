@@ -112,7 +112,7 @@ Kubernetes uses a [special-purpose authorization mode](https://kubernetes.io/doc
 Generate a certificate and private key for each Kubernetes worker node:
 
 ```
-for instance in worker-0 worker-1 worker-2; do
+for instance in kube-worker0 kube-worker1 kube-worker2; do
 cat > ${instance}-csr.json <<EOF
 {
   "CN": "system:node:${instance}",
@@ -132,11 +132,9 @@ cat > ${instance}-csr.json <<EOF
 }
 EOF
 
-EXTERNAL_IP=$(gcloud compute instances describe ${instance} \
-  --format 'value(networkInterfaces[0].accessConfigs[0].natIP)')
+EXTERNAL_IP=$(openstack server show ${instance} -f json | jq -r --arg network_name "$network_id" '.addresses[$network_name][1]')
 
-INTERNAL_IP=$(gcloud compute instances describe ${instance} \
-  --format 'value(networkInterfaces[0].networkIP)')
+INTERNAL_IP=$(openstack server show ${instance} -f json | jq -r --arg network_name "$network_id" '.addresses[$network_name][0]')
 
 cfssl gencert \
   -ca=ca.pem \
@@ -151,12 +149,12 @@ done
 Results:
 
 ```
-worker-0-key.pem
-worker-0.pem
-worker-1-key.pem
-worker-1.pem
-worker-2-key.pem
-worker-2.pem
+kube-worker0-key.pem
+kube-worker0.pem
+kube-worker1-key.pem
+kube-worker1.pem
+kube-worker2-key.pem
+kube-worker2.pem
 ```
 
 ### The Controller Manager Client Certificate
@@ -299,9 +297,7 @@ Generate the Kubernetes API Server certificate and private key:
 ```
 {
 
-KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-  --region $(gcloud config get-value compute/region) \
-  --format 'value(address)')
+KUBERNETES_PUBLIC_ADDRESS=$(curl -4s icanhazip.com)
 
 KUBERNETES_HOSTNAMES=kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local
 
@@ -395,17 +391,23 @@ service-account.pem
 Copy the appropriate certificates and private keys to each worker instance:
 
 ```
-for instance in worker-0 worker-1 worker-2; do
-  gcloud compute scp ca.pem ${instance}-key.pem ${instance}.pem ${instance}:~/
+for instance in kube-worker0 kube-worker1 kube-worker2; do
+  internal_ip=$(openstack server show ${instance} -f json | jq -r --arg network_name "kubernetes-private" '.addresses[$network_name][0]')
+  scp -i ../.ssh/id_ecdsa \
+      ca.pem ${instance}-key.pem ${instance}.pem \
+      ubuntu@$internal_ip:~/
 done
 ```
 
 Copy the appropriate certificates and private keys to each controller instance:
 
 ```
-for instance in controller-0 controller-1 controller-2; do
-  gcloud compute scp ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
-    service-account-key.pem service-account.pem ${instance}:~/
+for instance in kube-controller0 kube-controller1 kube-controller2; do
+  internal_ip=$(openstack server show ${instance} -f json | jq -r --arg network_name "kubernetes-private" '.addresses[$network_name][0]')
+  scp -i ../.ssh/id_ecdsa \
+      ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
+      service-account-key.pem service-account.pem \
+      ubuntu@$internal_ip:~/
 done
 ```
 
