@@ -404,6 +404,27 @@ openstack loadbalancer member create --subnet-id kubernetes-internal --address 1
 openstack loadbalancer member create --subnet-id kubernetes-internal --address 10.240.0.12 --protocol-port 6443 --monitor-port 80 pool1
 ```
 
+### Setup DNS for worker hostnames
+
+You need to tell the controllers where to find the workers, when calling them by their hostname, which will happen later.
+You can either set that up in your network, or edit the /etc/hosts on all controllers:
+
+```
+cat <<EOF | sudo tee -a /etc/hosts
+10.240.0.20 kube-worker0
+10.240.0.21 kube-worker1
+10.240.0.22 kube-worker2
+EOF
+```
+
+> You can verify it works by trying to ping all workers from the controllers.
+
+```
+ping -c 4 kube-worker0
+ping -c 4 kube-worker1
+ping -c 4 kube-worker2
+```
+
 ### Verification
 
 > The compute instances created in this tutorial will not have permission to complete this section. **Run the following commands from the same machine used to create the compute instances**.
