@@ -7,11 +7,9 @@ In this lab you will bootstrap three Kubernetes worker nodes. The following comp
 The commands in this lab must be run on each worker instance: `kube-worker0`, `kube-worker1`, and `kube-worker2`. Login to each worker instance using the `ssh` command. Example:
 
 ```
-```
 ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.20 # worker0
 ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.21 # worker1
 ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.22 # worker2
-```
 ```
 
 ### Running commands in parallel with tmux
