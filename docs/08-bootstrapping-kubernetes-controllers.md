@@ -4,7 +4,7 @@ In this lab you will bootstrap the Kubernetes control plane across three compute
 
 ## Prerequisites
 
-The commands in this lab must be run on each controller instance: `kube-controller0`, `kube-controller1`, and `kube-controller2`. Login to each controller instance using the `gcloud` command. Example:
+The commands in this lab must be run on each controller instance: `kube-controller0`, `kube-controller1`, and `kube-controller2`. Login to each controller instance using the `ssh` command. Example:
 
 ```
 ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.10 # controller0

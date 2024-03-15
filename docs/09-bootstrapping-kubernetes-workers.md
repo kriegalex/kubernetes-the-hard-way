@@ -4,10 +4,14 @@ In this lab you will bootstrap three Kubernetes worker nodes. The following comp
 
 ## Prerequisites
 
-The commands in this lab must be run on each worker instance: `worker-0`, `worker-1`, and `worker-2`. Login to each worker instance using the `gcloud` command. Example:
+The commands in this lab must be run on each worker instance: `kube-worker0`, `kube-worker1`, and `kube-worker2`. Login to each worker instance using the `ssh` command. Example:
 
 ```
-gcloud compute ssh worker-0
+```
+ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.20 # worker0
+ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.21 # worker1
+ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.22 # worker2
+```
 ```
 
 ### Running commands in parallel with tmux
@@ -21,7 +25,7 @@ Install the OS dependencies:
 ```
 {
   sudo apt-get update
-  sudo apt-get -y install socat conntrack ipset
+  sudo apt-get -y install socat conntrack ipset jq
 }
 ```
 
@@ -37,7 +41,7 @@ Verify if swap is enabled:
 sudo swapon --show
 ```
 
-If output is empthy then swap is not enabled. If swap is enabled run the following command to disable swap immediately:
+If output is empty then swap is not enabled. If swap is enabled run the following command to disable swap immediately:
 
 ```
 sudo swapoff -a
@@ -90,9 +94,10 @@ Install the worker binaries:
 Retrieve the Pod CIDR range for the current compute instance:
 
 ```
-POD_CIDR=$(curl -s -H "Metadata-Flavor: Google" \
-  http://metadata.google.internal/computeMetadata/v1/instance/attributes/pod-cidr)
+POD_CIDR=$(curl -s http://169.254.169.254/openstack/latest/meta_data.json | jq -r '.meta."pod-cidr"')
 ```
+
+> Please note the "" around pod-cidr
 
 Create the `bridge` network configuration file:
 
