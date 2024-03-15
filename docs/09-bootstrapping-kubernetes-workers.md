@@ -139,16 +139,11 @@ Create the `containerd` configuration file:
 sudo mkdir -p /etc/containerd/
 ```
 
+Retrieve a default config and modify it to [configure the systemd cgroup driver](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#containerd-systemd):
+
 ```
-cat << EOF | sudo tee /etc/containerd/config.toml
-[plugins]
-  [plugins.cri.containerd]
-    snapshotter = "overlayfs"
-    [plugins.cri.containerd.default_runtime]
-      runtime_type = "io.containerd.runtime.v1.linux"
-      runtime_engine = "/usr/local/bin/runc"
-      runtime_root = ""
-EOF
+/bin/containerd config default | sudo tee /etc/containerd/config.toml
+sudo sed -i '/\[plugins\."io\.containerd\.grpc\.v1\.cri"\.containerd\.runtimes\.runc\.options\]/a \            systemd_cgroup = true' /etc/containerd/config.toml
 ```
 
 Create the `containerd.service` systemd unit file:
