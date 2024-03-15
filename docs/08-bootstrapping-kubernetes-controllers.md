@@ -381,27 +381,27 @@ openstack floating ip set --port $(openstack port list | grep $LB_VIP | cut -d '
 #### Create http listener
 
 ```
-openstack loadbalancer listener create --name listener1 --protocol HTTP --protocol-port 80 lb1
+openstack loadbalancer listener create --name listener1 --protocol HTTPS --protocol-port 6443 lb1
 ```
 
 #### Create pool
 
 ```
-openstack loadbalancer pool create --name pool1 --lb-algorithm ROUND_ROBIN --listener listener1 --protocol HTTP
+openstack loadbalancer pool create --name pool1 --lb-algorithm ROUND_ROBIN --listener listener1 --protocol HTTPS
 ```
 
 #### Create health monitor
 
 ```
-openstack loadbalancer healthmonitor create --delay 5 --max-retries 3 --timeout 5 --type HTTP --url-path / pool1
+openstack loadbalancer healthmonitor create --delay 5 --max-retries 3 --timeout 5 --type HTTP --url-path /healthz pool1
 ```
 
 #### Add Instance become pool member
 
 ```
-openstack loadbalancer member create --subnet-id private-subnet --address 10.240.0.10 --protocol-port 80 pool1
-openstack loadbalancer member create --subnet-id private-subnet --address 10.240.0.11 --protocol-port 80 pool1
-openstack loadbalancer member create --subnet-id private-subnet --address 10.240.0.12 --protocol-port 80 pool1
+openstack loadbalancer member create --subnet-id kubernetes-internal --address 10.240.0.10 --protocol-port 6443 --monitor-port 80 pool1
+openstack loadbalancer member create --subnet-id kubernetes-internal --address 10.240.0.11 --protocol-port 6443 --monitor-port 80 pool1
+openstack loadbalancer member create --subnet-id kubernetes-internal --address 10.240.0.12 --protocol-port 6443 --monitor-port 80 pool1
 ```
 
 ### Verification
