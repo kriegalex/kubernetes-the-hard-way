@@ -288,6 +288,27 @@ EOF
 
 > Remember to run the above commands on each worker node: `worker-0`, `worker-1`, and `worker-2`.
 
+### Setup DNS for controller hostnames
+
+You need to tell the workers where to find the controllers, when calling them by their hostname.
+You can either set that up in your network, or edit the /etc/hosts on all workers:
+
+```
+cat <<EOF | sudo tee -a /etc/hosts
+10.240.0.10 kube-controller0
+10.240.0.11 kube-controller1
+10.240.0.12 kube-controller2
+EOF
+```
+
+> You can verify it works by trying to ping all controllers from the workers.
+
+```
+ping -c 4 kube-controller0
+ping -c 4 kube-controller1
+ping -c 4 kube-controller2
+```
+
 ## Verification
 
 > The compute instances created in this tutorial will not have permission to complete this section. Run the following commands from the same machine used to create the compute instances.
@@ -295,8 +316,8 @@ EOF
 List the registered Kubernetes nodes:
 
 ```
-gcloud compute ssh controller-0 \
-  --command "kubectl get nodes --kubeconfig admin.kubeconfig"
+ssh -i ../.ssh/id_ecdsa ubuntu@10.240.0.10 # controller0
+kubectl get nodes --kubeconfig admin.kubeconfig
 ```
 
 > output
