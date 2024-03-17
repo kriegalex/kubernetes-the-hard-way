@@ -30,6 +30,19 @@ done
 10.200.2.0/24
 ```
 
+## Allow pod traffic in OpenStack
+
+OpenStack will filter and drop all packets from IPs it does not know to prevent spoofing. This includes the pod and services CIDRs.
+
+It is required to allow those IPs for traffic communication:
+
+```
+for port in worker0 worker1 worker2; do
+  port_id=$(openstack port show $port -c id -f json |jq -r '.id')
+  openstack port set ${port_id} --allowed-address ip-address=10.200.0.0/16 --allowed-address ip-address=10.32.0.0/24
+done
+```
+
 ## Routes
 
 List the routers to double check the name we used in [chapter 03](03-compute-resources.md):
