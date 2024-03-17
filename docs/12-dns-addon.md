@@ -4,12 +4,10 @@ In this lab you will deploy the [DNS add-on](https://kubernetes.io/docs/concepts
 
 ## The DNS Cluster Add-on
 
-Copy [coredns-1.8.0.yaml](deployments/coredns-1.8.0.yaml) to where you are going to run the command. Most probably the same place where you just setup kubectl in [chapter 10](10-configuring-kubectl.md) !
-
 Deploy the `coredns` cluster add-on:
 
 ```
-kubectl apply -f coredns-1.8.0.yaml
+kubectl apply -f https://raw.githubusercontent.com/kriegalex/kubernetes-the-hard-way/openstack/deployments/coredns-1.10.1.yaml
 ```
 
 > output

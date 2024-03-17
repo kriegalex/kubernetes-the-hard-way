@@ -51,13 +51,14 @@ sudo swapoff -a
 
 ```
 wget -q --show-progress --https-only --timestamping \
-  https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.21.0/crictl-v1.21.0-linux-amd64.tar.gz \
-  https://github.com/opencontainers/runc/releases/download/v1.0.0-rc93/runc.amd64 \
-  https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz \
-  https://github.com/containerd/containerd/releases/download/v1.4.4/containerd-1.4.4-linux-amd64.tar.gz \
-  https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl \
-  https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-proxy \
-  https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubelet
+  https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.27.1/crictl-v1.27.1-linux-amd64.tar.gz \
+  https://github.com/opencontainers/runc/releases/download/v1.1.8/runc.amd64 \
+  https://github.com/containernetworking/plugins/releases/download/v1.3.0/cni-plugins-linux-amd64-v1.3.0.tgz \
+  https://github.com/containerd/containerd/releases/download/v1.7.3/containerd-1.7.3-linux-amd64.tar.gz \
+  https://raw.githubusercontent.com/containerd/containerd/v1.7.3/containerd.service \
+  https://storage.googleapis.com/kubernetes-release/release/v1.27.4/bin/linux/amd64/kubectl \
+  https://storage.googleapis.com/kubernetes-release/release/v1.27.4/bin/linux/amd64/kube-proxy \
+  https://storage.googleapis.com/kubernetes-release/release/v1.27.4/bin/linux/amd64/kubelet
 ```
 
 Create the installation directories:
@@ -77,9 +78,9 @@ Install the worker binaries:
 ```
 {
   mkdir containerd
-  tar -xvf crictl-v1.21.0-linux-amd64.tar.gz
-  tar -xvf containerd-1.4.4-linux-amd64.tar.gz -C containerd
-  sudo tar -xvf cni-plugins-linux-amd64-v0.9.1.tgz -C /opt/cni/bin/
+  tar -xvf crictl-v1.27.1-linux-amd64.tar.gz
+  tar -xvf containerd-1.7.3-linux-amd64.tar.gz -C containerd
+  sudo tar -xvf cni-plugins-linux-amd64-v1.3.0.tgz -C /opt/cni/bin/
   sudo mv runc.amd64 runc
   chmod +x crictl kubectl kube-proxy kubelet runc 
   sudo mv crictl kubectl kube-proxy kubelet runc /usr/local/bin/
@@ -97,36 +98,38 @@ POD_CIDR=$(curl -s http://169.254.169.254/openstack/latest/meta_data.json | jq -
 
 > Please note the "" around pod-cidr
 
-Create the `bridge` network configuration file:
+Create the CNI config file:
 
 ```
-cat <<EOF | sudo tee /etc/cni/net.d/10-bridge.conf
+cat << EOF | sudo tee /etc/cni/net.d/10-containerd-net.conflist
 {
-    "cniVersion": "0.4.0",
-    "name": "bridge",
-    "type": "bridge",
-    "bridge": "cnio0",
-    "isGateway": true,
-    "ipMasq": true,
-    "ipam": {
-        "type": "host-local",
-        "ranges": [
-          [{"subnet": "${POD_CIDR}"}]
-        ],
-        "routes": [{"dst": "0.0.0.0/0"}]
-    }
-}
-EOF
-```
-
-Create the `loopback` network configuration file:
-
-```
-cat <<EOF | sudo tee /etc/cni/net.d/99-loopback.conf
-{
-    "cniVersion": "0.4.0",
-    "name": "lo",
-    "type": "loopback"
+ "cniVersion": "1.0.0",
+ "name": "containerd-net",
+ "plugins": [
+   {
+     "type": "bridge",
+     "bridge": "cni0",
+     "isGateway": true,
+     "ipMasq": true,
+     "promiscMode": true,
+     "ipam": {
+       "type": "host-local",
+       "ranges": [
+         [{
+           "subnet": "${POD_CIDR}"
+         }]
+       ],
+       "routes": [
+         { "dst": "0.0.0.0/0" }
+       ]
+     }
+   },
+   {
+     "type": "portmap",
+     "capabilities": {"portMappings": true},
+     "externalSetMarkChain": "KUBE-MARK-MASQ"
+   }
+ ]
 }
 EOF
 ```
@@ -139,37 +142,16 @@ Create the `containerd` configuration file:
 sudo mkdir -p /etc/containerd/
 ```
 
-Retrieve a default config and modify it to [configure the systemd cgroup driver](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#containerd-systemd):
+Retrieve a default containerd config :
 
 ```
 /bin/containerd config default | sudo tee /etc/containerd/config.toml
-sudo sed -i '/\[plugins\."io\.containerd\.grpc\.v1\.cri"\.containerd\.runtimes\.runc\.options\]/a \            systemd_cgroup = true' /etc/containerd/config.toml
 ```
 
-Create the `containerd.service` systemd unit file:
+Move the `containerd.service` systemd unit file:
 
 ```
-cat <<EOF | sudo tee /etc/systemd/system/containerd.service
-[Unit]
-Description=containerd container runtime
-Documentation=https://containerd.io
-After=network.target
-
-[Service]
-ExecStartPre=/sbin/modprobe overlay
-ExecStart=/bin/containerd
-Restart=always
-RestartSec=5
-Delegate=yes
-KillMode=process
-OOMScoreAdjust=-999
-LimitNOFILE=1048576
-LimitNPROC=infinity
-LimitCORE=infinity
-
-[Install]
-WantedBy=multi-user.target
-EOF
+sudo mv containerd.service /usr/local/lib/systemd/system/
 ```
 
 ### Configure the Kubelet
